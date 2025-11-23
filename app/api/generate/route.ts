@@ -28,9 +28,11 @@ export async function POST(request: Request) {
   ${kidFriendly ? "Make them kid-friendly (simple flavors, no heavy spice)." : ""}
   Return ONLY the JSON array.`;
 
-  const apiKey = process.env.GOOGLE_API_KEY || '';
-  
-  // UPDATED: Trying the generic 'gemini-1.5-flash' alias.
+  // 1. SANITIZE THE KEY (Removes accidental spaces/newlines)
+  const rawKey = process.env.GOOGLE_API_KEY || '';
+  const apiKey = rawKey.trim(); 
+
+  // 2. TRY THE STANDARD FLASH MODEL
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
   try {
@@ -44,21 +46,29 @@ export async function POST(request: Request) {
 
     const data = await response.json();
 
-    // --- SAFETY CHECK ---
+    // --- DIAGNOSTIC BLOCK ---
     if (!data.candidates) {
-      console.error("Google API Error Details:", JSON.stringify(data, null, 2));
+      console.error("--- GENERATION FAILED ---");
+      console.error("Error Details:", JSON.stringify(data, null, 2));
+      
+      // If model not found, try to list what IS available
+      if (data.error?.code === 404) {
+        console.log("Attempting to list available models...");
+        const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+        const listResp = await fetch(listUrl);
+        const listData = await listResp.json();
+        console.log("AVAILABLE MODELS:", JSON.stringify(listData, null, 2));
+      }
+
       return NextResponse.json({ 
         error: "API Error", 
-        details: data.error?.message || "No candidates returned" 
+        details: data.error?.message || "No candidates returned. Check Vercel logs for available models." 
       }, { status: 500 });
     }
 
     let text = data.candidates[0].content.parts[0].text;
-    
-    // Clean up markdown formatting
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     
-    // Parse JSON safely
     let recipes;
     try {
         recipes = JSON.parse(text);
