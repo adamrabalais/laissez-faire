@@ -18,8 +18,8 @@ const generateShoppingList = (plan: any[], peopleCount: number) => {
           name: ing.name,
           totalAmount: scaledAmount, 
           unit: ing.unit, 
-          category: ing.category,
-          emoji: ing.emoji || '🥘', // Store the emoji
+          category: ing.category, 
+          emoji: ing.emoji || '🥘', 
           recipes: [recipe.title],
           count: 1 
         };
@@ -46,9 +46,6 @@ const formatAmount = (amount: number) => {
 const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number }) => {
   const [expanded, setExpanded] = useState(false);
   const scaleFactor = peopleCount / (recipe.servings || 4);
-
-  // Generates a real image on the fly using the AI's description
-  const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(recipe.imagePrompt || recipe.title)}?width=800&height=600&nologo=true&seed=${recipe.id}`;
 
   const handlePrint = (e: any) => {
     e.stopPropagation(); 
@@ -100,16 +97,23 @@ const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number 
 
   return (
     <div className={`bg-white rounded-2xl shadow-sm border border-stone-200 transition-all duration-300 overflow-hidden ${expanded ? 'ring-2 ring-emerald-100 shadow-md' : 'hover:border-emerald-300'}`}>
-      {/* Minimized View */}
       <div onClick={() => setExpanded(!expanded)} className="cursor-pointer">
-        {/* Image Banner (Visible in both states) */}
-        <div className="w-full h-32 sm:h-48 overflow-hidden relative bg-stone-100">
-            <img 
-                src={imageUrl} 
-                alt={recipe.title}
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                loading="lazy"
-            />
+        {/* Image Banner */}
+        <div className="w-full h-32 sm:h-48 overflow-hidden relative bg-stone-100 group">
+            {recipe.imageUrl ? (
+              <img 
+                  src={recipe.imageUrl} 
+                  alt={recipe.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  loading="lazy"
+              />
+            ) : (
+              // Fallback pattern if no image key provided yet
+              <div className="w-full h-full flex items-center justify-center bg-stone-200 text-stone-400">
+                <ChefHat size={48} opacity={0.2} />
+              </div>
+            )}
+            
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4 pt-12">
                 <h4 className="font-bold text-lg text-white leading-tight shadow-black drop-shadow-md">{recipe.title}</h4>
             </div>
@@ -133,7 +137,6 @@ const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number 
         </div>
       </div>
 
-      {/* Expanded Content */}
       {expanded && (
         <div className="px-6 pb-6 border-t border-stone-100 bg-stone-50/50 animate-in slide-in-from-top-2 duration-200">
           <div className="mt-4 mb-6">
@@ -193,8 +196,8 @@ export default function LaissezFaireApp() {
     const messages = [
         "Consulting Chef...", 
         "Checking the pantry...", 
-        "Drawing recipe sketches...",
-        "Optimizing for leftovers...", 
+        "Finding beautiful photos...",
+        "Writing recipes...", 
         "Finalizing shopping list..."
     ];
     let msgIndex = 0;
