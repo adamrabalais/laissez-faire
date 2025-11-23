@@ -30,8 +30,8 @@ export async function POST(request: Request) {
 
   const apiKey = process.env.GOOGLE_API_KEY || '';
   
-  // UPDATED: Switched to 'gemini-1.5-flash-latest' to fix 404 error
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+  // UPDATED: Switched to 'gemini-pro' (The most stable/standard model)
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
 
   try {
     const response = await fetch(url, {
@@ -58,7 +58,15 @@ export async function POST(request: Request) {
     // Clean up markdown formatting
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     
-    const recipes = JSON.parse(text);
+    // Parse JSON safely
+    let recipes;
+    try {
+        recipes = JSON.parse(text);
+    } catch (parseError) {
+        console.error("JSON Parse Error:", text);
+        return NextResponse.json({ error: "AI returned invalid JSON" }, { status: 500 });
+    }
+
     return NextResponse.json(recipes);
     
   } catch (error) {
