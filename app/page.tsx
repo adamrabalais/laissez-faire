@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, ChefHat, Check, ArrowRight, Sparkles, Users, ChevronDown, ChevronUp, ExternalLink, Leaf, Printer, Loader2, Utensils, Star } from 'lucide-react';
+import { ShoppingCart, ChefHat, Check, ArrowRight, Sparkles, Users, ChevronDown, ChevronUp, ExternalLink, Leaf, Printer, Loader2, Utensils, Star, Search } from 'lucide-react';
 
 // --- ALGORITHM Helpers ---
 const generateShoppingList = (plan: any[], peopleCount: number) => {
@@ -39,6 +39,16 @@ const generateShoppingList = (plan: any[], peopleCount: number) => {
 const formatAmount = (amount: number) => {
   if (amount % 1 === 0) return amount;
   return amount.toFixed(1).replace('.0', '');
+};
+
+// Helper to extract domain name for display
+const getDomain = (url: string) => {
+  try {
+    const domain = new URL(url).hostname;
+    return domain.replace('www.', '').split('.')[0]; // e.g. "allrecipes"
+  } catch (e) {
+    return 'Web';
+  }
 };
 
 // --- SUBCOMPONENTS ---
@@ -95,10 +105,11 @@ const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number 
     printWindow.document.close();
   };
 
-  // Determine the correct link: Use the real source if available, otherwise Google search
-  const recipeLink = recipe.sourceUrl && recipe.sourceUrl.startsWith('http') 
-    ? recipe.sourceUrl 
-    : `https://www.google.com/search?q=${encodeURIComponent(recipe.title + " Recipe")}`;
+  // Smart Link Logic
+  const hasRealLink = recipe.sourceUrl && recipe.sourceUrl.startsWith('http');
+  const finalLink = hasRealLink ? recipe.sourceUrl : `https://www.google.com/search?q=${encodeURIComponent(recipe.title + " Recipe")}`;
+  const linkText = hasRealLink ? `View on ${getDomain(recipe.sourceUrl)}` : "Find Recipe";
+  const LinkIcon = hasRealLink ? ExternalLink : Search;
 
   return (
     <div className={`bg-white rounded-2xl shadow-sm border border-stone-200 transition-all duration-300 overflow-hidden ${expanded ? 'ring-2 ring-emerald-100 shadow-md' : 'hover:border-emerald-300'}`}>
@@ -113,7 +124,6 @@ const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number 
                   loading="lazy"
               />
             ) : (
-              // Fallback pattern if no image key provided yet
               <div className="w-full h-full flex items-center justify-center bg-stone-200 text-stone-400">
                 <ChefHat size={48} opacity={0.2} />
               </div>
@@ -170,9 +180,10 @@ const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number 
             <button onClick={handlePrint} className="flex items-center gap-2 text-xs font-bold text-stone-500 hover:text-emerald-700 px-3 py-1.5 rounded-md hover:bg-stone-100 transition-colors">
               <Printer size={14} /> Print Recipe
             </button>
-            {/* UPDATED LINK LOGIC HERE */}
-            <a href={recipeLink} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline">
-              View Original Recipe <ExternalLink size={10} />
+            
+            {/* SMART LINK BUTTON */}
+            <a href={finalLink} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline bg-blue-50 px-3 py-1.5 rounded-md hover:bg-blue-100 transition-colors">
+              {linkText} <LinkIcon size={12} />
             </a>
           </div>
         </div>
