@@ -212,9 +212,9 @@ export default function LaissezFaireApp() {
     
     const messages = [
         "Consulting Chef...", 
-        "Checking the pantry...", 
-        "Finding beautiful photos...",
-        "Writing recipes...", 
+        "Searching the web for recipes...", 
+        "Finding best matches...",
+        "Scraping images...", 
         "Finalizing shopping list..."
     ];
     let msgIndex = 0;
@@ -330,8 +330,8 @@ export default function LaissezFaireApp() {
         {step === 'input' ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-10 space-y-2">
-              <h1 className="text-4xl font-serif font-bold text-stone-800">What's the plan, Skylar?</h1>
-              <p className="text-lg text-stone-500">I'll figure out the food. You just eat it.</p>
+              <h1 className="text-4xl font-serif font-bold text-stone-800">What's the plan?</h1>
+              <p className="text-lg text-stone-500">I'll plan. You cook.</p>
             </div>
 
             <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-stone-200 border border-stone-100 p-8 space-y-8">
