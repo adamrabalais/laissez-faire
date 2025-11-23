@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-// ADDED 'Utensils' to imports
-import { ShoppingCart, ChefHat, Check, ArrowRight, Sparkles, Users, ChevronDown, ChevronUp, ExternalLink, Leaf, Printer, Loader2, Utensils } from 'lucide-react';
+// ADDED 'Star' and 'Utensils' to imports
+import { ShoppingCart, ChefHat, Check, ArrowRight, Sparkles, Users, ChevronDown, ChevronUp, ExternalLink, Leaf, Printer, Loader2, Utensils, Star } from 'lucide-react';
 
 // --- ALGORITHM Helpers ---
 const generateShoppingList = (plan: any[], peopleCount: number) => {
@@ -103,7 +103,15 @@ const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number 
             <h4 className="font-bold text-lg text-stone-900">{recipe.title}</h4>
             {recipe.kidFriendly && <span className="text-[10px] font-bold uppercase text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">Kid Safe</span>}
           </div>
-          <p className="text-stone-500 text-sm">{recipe.description}</p>
+          <p className="text-stone-500 text-sm mb-2">{recipe.description}</p>
+          
+          {/* NEW: Rating Line */}
+          <div className="flex items-center gap-1 text-xs font-semibold text-amber-500">
+            <Star size={12} fill="currentColor" />
+            <span>{recipe.rating || 4.5}</span>
+            <span className="text-stone-400 font-normal">({recipe.reviewCount || 120} reviews)</span>
+          </div>
+
         </div>
         <div className="ml-4 text-stone-400">
           {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -150,9 +158,10 @@ const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number 
 export default function LaissezFaireApp() {
   const [step, setStep] = useState('input'); 
   const [mealCount, setMealCount] = useState(3);
-  const [peopleCount, setPeopleCount] = useState(1); // Default changed to 1
+  const [peopleCount, setPeopleCount] = useState(1); 
   const [kidFriendly, setKidFriendly] = useState(false);
   const [cuisine, setCuisine] = useState('Mediterranean');
+  const [priority, setPriority] = useState('Balanced'); // NEW STATE
   const [isLoading, setIsLoading] = useState(false);
   const [statusText, setStatusText] = useState('');
   
@@ -162,7 +171,6 @@ export default function LaissezFaireApp() {
   const handlePlan = async () => {
     setIsLoading(true);
     
-    // Status Message Cycler
     const messages = [
         "Consulting Chef...", 
         "Checking the pantry...", 
@@ -186,7 +194,8 @@ export default function LaissezFaireApp() {
           count: mealCount, 
           people: peopleCount,
           diet: cuisine,
-          kidFriendly
+          kidFriendly,
+          priority // Sending priority to API
         })
       });
 
@@ -224,7 +233,7 @@ export default function LaissezFaireApp() {
             <div className="w-8 h-8 bg-emerald-700 rounded-full flex items-center justify-center text-white shadow-sm">
               <Leaf size={16} strokeWidth={2.5} />
             </div>
-            {/* CHANGED: Always show full name, just responsive font size */}
+            {/* Always show full name, just responsive font size */}
             <span className="font-serif font-bold text-xl sm:text-2xl tracking-tight text-emerald-900">Laissez-faire</span>
           </div>
           {step === 'results' && (
@@ -274,7 +283,24 @@ export default function LaissezFaireApp() {
                 </div>
               </div>
 
-              {/* CHANGED: grid-cols-1 on mobile, 2 on small screens+ */}
+              {/* NEW: Priority Selection */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider">Prioritize</label>
+                <div className="relative">
+                  <select 
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                    className="w-full p-3 pl-4 pr-10 text-lg bg-stone-50 border-2 border-stone-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-stone-700 font-medium appearance-none cursor-pointer hover:border-emerald-300"
+                  >
+                    <option value="Balanced">Balanced (Default)</option>
+                    <option value="Cheaper Ingredients">Cheaper Ingredients</option>
+                    <option value="Fewer Ingredients">Fewer Ingredients (Easy Prep)</option>
+                    <option value="Fancier Meals">Fancier Meals</option>
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" size={20} />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {/* Meal Counter */}
                   <div className="space-y-3">
@@ -286,7 +312,6 @@ export default function LaissezFaireApp() {
                       >
                         -
                       </button>
-                      {/* ADDED ICON HERE */}
                       <div className="flex items-center gap-2 px-2">
                         <Utensils size={18} className="text-emerald-700/50" />
                         <span className="text-3xl font-serif font-black text-emerald-700">{mealCount}</span>
