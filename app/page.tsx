@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, ChefHat, ArrowRight, Sparkles, Users, ChevronDown, ChevronUp, ExternalLink, Leaf, Printer, Loader2 } from 'lucide-react';
+// ADDED 'Check' to this list below vvv
+import { ShoppingCart, ChefHat, Check, ArrowRight, Sparkles, Users, ChevronDown, ChevronUp, ExternalLink, Leaf, Printer, Loader2 } from 'lucide-react';
 
 // --- ALGORITHM Helpers ---
 const generateShoppingList = (plan: any[], peopleCount: number) => {
