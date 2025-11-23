@@ -224,8 +224,8 @@ export default function LaissezFaireApp() {
             <div className="w-8 h-8 bg-emerald-700 rounded-full flex items-center justify-center text-white shadow-sm">
               <Leaf size={16} strokeWidth={2.5} />
             </div>
-            <span className="font-serif font-bold text-2xl tracking-tight text-emerald-900 hidden sm:block">Laissez-faire</span>
-            <span className="font-serif font-bold text-xl tracking-tight text-emerald-900 sm:hidden">Laissez</span>
+            {/* CHANGED: Always show full name, just responsive font size */}
+            <span className="font-serif font-bold text-xl sm:text-2xl tracking-tight text-emerald-900">Laissez-faire</span>
           </div>
           {step === 'results' && (
             <button onClick={reset} className="text-sm font-medium text-stone-500 hover:text-emerald-700">
@@ -274,21 +274,22 @@ export default function LaissezFaireApp() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              {/* CHANGED: grid-cols-1 on mobile, 2 on small screens+ */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {/* Meal Counter */}
                   <div className="space-y-3">
                     <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider">Dinners</label>
                     <div className="flex items-center justify-between bg-stone-50 border-2 border-stone-200 rounded-xl p-1">
                       <button 
                         onClick={() => setMealCount(Math.max(1, mealCount - 1))}
-                        className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm border border-stone-200 text-stone-600 hover:bg-stone-100 text-lg font-bold"
+                        className="w-12 h-12 flex items-center justify-center bg-white rounded-lg shadow-sm border border-stone-200 text-stone-600 hover:bg-stone-100 text-xl font-bold active:scale-95 transition-all"
                       >
                         -
                       </button>
-                      <span className="text-2xl font-serif font-black text-emerald-700">{mealCount}</span>
+                      <span className="text-3xl font-serif font-black text-emerald-700 px-4">{mealCount}</span>
                       <button 
                         onClick={() => setMealCount(Math.min(7, mealCount + 1))}
-                        className="w-10 h-10 flex items-center justify-center bg-emerald-700 rounded-lg shadow-sm text-white hover:bg-emerald-800 text-lg font-bold"
+                        className="w-12 h-12 flex items-center justify-center bg-emerald-700 rounded-lg shadow-sm text-white hover:bg-emerald-800 text-xl font-bold active:scale-95 transition-all"
                       >
                         +
                       </button>
@@ -301,17 +302,17 @@ export default function LaissezFaireApp() {
                     <div className="flex items-center justify-between bg-stone-50 border-2 border-stone-200 rounded-xl p-1">
                       <button 
                         onClick={() => setPeopleCount(Math.max(1, peopleCount - 1))}
-                        className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm border border-stone-200 text-stone-600 hover:bg-stone-100 text-lg font-bold"
+                        className="w-12 h-12 flex items-center justify-center bg-white rounded-lg shadow-sm border border-stone-200 text-stone-600 hover:bg-stone-100 text-xl font-bold active:scale-95 transition-all"
                       >
                         -
                       </button>
-                      <div className="flex items-center gap-1">
-                        <Users size={14} className="text-emerald-700/50" />
-                        <span className="text-2xl font-serif font-black text-emerald-700">{peopleCount}</span>
+                      <div className="flex items-center gap-2 px-2">
+                        <Users size={18} className="text-emerald-700/50" />
+                        <span className="text-3xl font-serif font-black text-emerald-700">{peopleCount}</span>
                       </div>
                       <button 
                         onClick={() => setPeopleCount(Math.min(12, peopleCount + 1))}
-                        className="w-10 h-10 flex items-center justify-center bg-emerald-700 rounded-lg shadow-sm text-white hover:bg-emerald-800 text-lg font-bold"
+                        className="w-12 h-12 flex items-center justify-center bg-emerald-700 rounded-lg shadow-sm text-white hover:bg-emerald-800 text-xl font-bold active:scale-95 transition-all"
                       >
                         +
                       </button>
