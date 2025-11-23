@@ -11,6 +11,8 @@ Each object must have:
 - description (short string)
 - cuisine (string)
 - kidFriendly (boolean)
+- rating (number, between 3.0 and 5.0)
+- reviewCount (number)
 - ingredients (array of objects: {name, amount (number), unit, category})
 - instructions (array of strings)
 - servings (number, default 4)
@@ -22,10 +24,21 @@ Minimize food waste by reusing ingredients across recipes where logical.
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { count, people, diet, kidFriendly } = body;
+  const { count, people, diet, kidFriendly, priority } = body;
+
+  // Logic to nudge the AI based on priority
+  let priorityInstruction = "Balance cost, ease, and flavor."; // Default
+  if (priority === 'Cheaper Ingredients') {
+    priorityInstruction = "Strictly prioritize budget-friendly ingredients (beans, rice, seasonal veggies, cheaper cuts of meat). Avoid expensive specialty items.";
+  } else if (priority === 'Fewer Ingredients') {
+    priorityInstruction = "Strictly prioritize recipes with short ingredient lists (aim for 5-7 main ingredients). Keep it simple.";
+  } else if (priority === 'Fancier Meals') {
+    priorityInstruction = "Prioritize gourmet flavors, premium ingredients, and slightly more complex techniques. Make it impressive.";
+  }
 
   const userPrompt = `Generate ${count} distinct ${diet} dinner recipes for ${people} people. 
   ${kidFriendly ? "Make them kid-friendly (simple flavors, no heavy spice)." : ""}
+  ${priorityInstruction}
   Return ONLY the JSON array.`;
 
   // 1. SANITIZE THE KEY
@@ -33,7 +46,6 @@ export async function POST(request: Request) {
   const apiKey = rawKey.trim(); 
 
   // 2. USE THE AVAILABLE MODEL (Gemini 2.5 Flash)
-  // Updated based on your logs showing 'models/gemini-2.5-flash' is available.
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   try {
