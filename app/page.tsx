@@ -95,6 +95,11 @@ const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number 
     printWindow.document.close();
   };
 
+  // Determine the correct link: Use the real source if available, otherwise Google search
+  const recipeLink = recipe.sourceUrl && recipe.sourceUrl.startsWith('http') 
+    ? recipe.sourceUrl 
+    : `https://www.google.com/search?q=${encodeURIComponent(recipe.title + " Recipe")}`;
+
   return (
     <div className={`bg-white rounded-2xl shadow-sm border border-stone-200 transition-all duration-300 overflow-hidden ${expanded ? 'ring-2 ring-emerald-100 shadow-md' : 'hover:border-emerald-300'}`}>
       <div onClick={() => setExpanded(!expanded)} className="cursor-pointer">
@@ -165,7 +170,8 @@ const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number 
             <button onClick={handlePrint} className="flex items-center gap-2 text-xs font-bold text-stone-500 hover:text-emerald-700 px-3 py-1.5 rounded-md hover:bg-stone-100 transition-colors">
               <Printer size={14} /> Print Recipe
             </button>
-            <a href={`https://www.google.com/search?q=${encodeURIComponent(recipe.title + " Recipe")}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline">
+            {/* UPDATED LINK LOGIC HERE */}
+            <a href={recipeLink} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline">
               View Original Recipe <ExternalLink size={10} />
             </a>
           </div>
@@ -267,7 +273,7 @@ export default function LaissezFaireApp() {
             </head>
             <body>
                 <h1>Shopping List</h1>
-                <div class="meta">For ${plan.length} meals • Serving ${peopleCount} people</div>
+                <div class="meta">For ${plan.length} meals • Serving ${peopleCount} person${peopleCount > 1 ? 's' : ''}</div>
                 
                 ${shoppingList.map(item => `
                     <div class="item">
