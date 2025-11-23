@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-// ADDED 'Star' and 'Utensils' to imports
 import { ShoppingCart, ChefHat, Check, ArrowRight, Sparkles, Users, ChevronDown, ChevronUp, ExternalLink, Leaf, Printer, Loader2, Utensils, Star } from 'lucide-react';
 
 // --- ALGORITHM Helpers ---
@@ -19,7 +18,8 @@ const generateShoppingList = (plan: any[], peopleCount: number) => {
           name: ing.name,
           totalAmount: scaledAmount, 
           unit: ing.unit, 
-          category: ing.category, 
+          category: ing.category,
+          emoji: ing.emoji || '🥘', // Store the emoji
           recipes: [recipe.title],
           count: 1 
         };
@@ -46,6 +46,9 @@ const formatAmount = (amount: number) => {
 const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number }) => {
   const [expanded, setExpanded] = useState(false);
   const scaleFactor = peopleCount / (recipe.servings || 4);
+
+  // Generates a real image on the fly using the AI's description
+  const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(recipe.imagePrompt || recipe.title)}?width=800&height=600&nologo=true&seed=${recipe.id}`;
 
   const handlePrint = (e: any) => {
     e.stopPropagation(); 
@@ -80,7 +83,7 @@ const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number 
           <div class="ingredients-grid">
             ${recipe.ingredients.map((ing: any) => `
               <div class="ingredient-item">
-                <strong>${formatAmount(ing.amount * scaleFactor)} ${ing.unit}</strong> ${ing.name}
+                ${ing.emoji || ''} <strong>${formatAmount(ing.amount * scaleFactor)} ${ing.unit}</strong> ${ing.name}
               </div>
             `).join('')}
           </div>
@@ -97,27 +100,40 @@ const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number 
 
   return (
     <div className={`bg-white rounded-2xl shadow-sm border border-stone-200 transition-all duration-300 overflow-hidden ${expanded ? 'ring-2 ring-emerald-100 shadow-md' : 'hover:border-emerald-300'}`}>
-      <div onClick={() => setExpanded(!expanded)} className="p-6 cursor-pointer flex justify-between items-start">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-bold text-lg text-stone-900">{recipe.title}</h4>
-            {recipe.kidFriendly && <span className="text-[10px] font-bold uppercase text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">Kid Safe</span>}
-          </div>
-          <p className="text-stone-500 text-sm mb-2">{recipe.description}</p>
-          
-          {/* NEW: Rating Line */}
-          <div className="flex items-center gap-1 text-xs font-semibold text-amber-500">
-            <Star size={12} fill="currentColor" />
-            <span>{recipe.rating || 4.5}</span>
-            <span className="text-stone-400 font-normal">({recipe.reviewCount || 120} reviews)</span>
-          </div>
-
+      {/* Minimized View */}
+      <div onClick={() => setExpanded(!expanded)} className="cursor-pointer">
+        {/* Image Banner (Visible in both states) */}
+        <div className="w-full h-32 sm:h-48 overflow-hidden relative bg-stone-100">
+            <img 
+                src={imageUrl} 
+                alt={recipe.title}
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                loading="lazy"
+            />
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4 pt-12">
+                <h4 className="font-bold text-lg text-white leading-tight shadow-black drop-shadow-md">{recipe.title}</h4>
+            </div>
         </div>
-        <div className="ml-4 text-stone-400">
-          {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+
+        <div className="p-4 flex justify-between items-start">
+            <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                    {recipe.kidFriendly && <span className="text-[10px] font-bold uppercase text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">Kid Safe</span>}
+                    <div className="flex items-center gap-1 text-xs font-semibold text-amber-500">
+                        <Star size={12} fill="currentColor" />
+                        <span>{recipe.rating || 4.5}</span>
+                        <span className="text-stone-400 font-normal">({recipe.reviewCount || 120})</span>
+                    </div>
+                </div>
+                <p className="text-stone-500 text-sm line-clamp-2">{recipe.description}</p>
+            </div>
+            <div className="ml-4 text-stone-400 mt-1">
+            {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </div>
         </div>
       </div>
 
+      {/* Expanded Content */}
       {expanded && (
         <div className="px-6 pb-6 border-t border-stone-100 bg-stone-50/50 animate-in slide-in-from-top-2 duration-200">
           <div className="mt-4 mb-6">
@@ -125,7 +141,10 @@ const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {recipe.ingredients.map((ing: any, i: number) => (
                 <div key={i} className="flex items-center justify-between text-sm p-2 bg-white rounded-lg border border-stone-100">
-                  <span className="text-stone-700">{ing.name}</span>
+                  <span className="text-stone-700 flex items-center gap-2">
+                    <span>{ing.emoji}</span>
+                    {ing.name}
+                  </span>
                   <span className="font-semibold text-emerald-700">
                     {formatAmount(ing.amount * scaleFactor)} <span className="text-xs text-stone-400 font-normal">{ing.unit}</span>
                   </span>
@@ -161,7 +180,7 @@ export default function LaissezFaireApp() {
   const [peopleCount, setPeopleCount] = useState(1); 
   const [kidFriendly, setKidFriendly] = useState(false);
   const [cuisine, setCuisine] = useState('Mediterranean');
-  const [priority, setPriority] = useState('Balanced'); // NEW STATE
+  const [priority, setPriority] = useState('Balanced'); 
   const [isLoading, setIsLoading] = useState(false);
   const [statusText, setStatusText] = useState('');
   
@@ -174,8 +193,8 @@ export default function LaissezFaireApp() {
     const messages = [
         "Consulting Chef...", 
         "Checking the pantry...", 
+        "Drawing recipe sketches...",
         "Optimizing for leftovers...", 
-        "Writing recipes...", 
         "Finalizing shopping list..."
     ];
     let msgIndex = 0;
@@ -195,7 +214,7 @@ export default function LaissezFaireApp() {
           people: peopleCount,
           diet: cuisine,
           kidFriendly,
-          priority // Sending priority to API
+          priority 
         })
       });
 
@@ -223,6 +242,49 @@ export default function LaissezFaireApp() {
     setShoppingList([]);
   };
 
+  // Custom Print Function for Shopping List Only
+  const printShoppingList = () => {
+    const printWindow = window.open('', '_blank', 'width=600,height=800');
+    if (!printWindow) return;
+
+    const html = `
+        <html>
+            <head>
+                <title>Shopping List - Laissez-faire</title>
+                <style>
+                    body { font-family: sans-serif; padding: 30px; color: #333; }
+                    h1 { color: #047857; border-bottom: 2px solid #047857; padding-bottom: 10px; }
+                    .meta { margin-bottom: 20px; color: #666; font-size: 14px; }
+                    .item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+                    .name { font-weight: bold; }
+                    .amount { color: #047857; }
+                    .category { font-size: 12px; color: #999; margin-top: 2px;}
+                    @media print { button { display: none; } }
+                </style>
+            </head>
+            <body>
+                <h1>Shopping List</h1>
+                <div class="meta">For ${plan.length} meals • Serving ${peopleCount} people</div>
+                
+                ${shoppingList.map(item => `
+                    <div class="item">
+                        <div>
+                            <div class="name">${item.emoji || ''} ${item.name}</div>
+                            <div class="category">${item.category}</div>
+                        </div>
+                        <div class="amount">${formatAmount(item.totalAmount)} ${item.unit}</div>
+                    </div>
+                `).join('')}
+
+                <div style="margin-top: 40px; text-align: center; font-size: 12px; color: #ccc;">Generated by Laissez-faire</div>
+                <script>window.onload = function() { window.print(); }</script>
+            </body>
+        </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 font-sans selection:bg-emerald-200 pb-20">
       
@@ -233,7 +295,6 @@ export default function LaissezFaireApp() {
             <div className="w-8 h-8 bg-emerald-700 rounded-full flex items-center justify-center text-white shadow-sm">
               <Leaf size={16} strokeWidth={2.5} />
             </div>
-            {/* Always show full name, just responsive font size */}
             <span className="font-serif font-bold text-xl sm:text-2xl tracking-tight text-emerald-900">Laissez-faire</span>
           </div>
           {step === 'results' && (
@@ -283,7 +344,7 @@ export default function LaissezFaireApp() {
                 </div>
               </div>
 
-              {/* NEW: Priority Selection */}
+              {/* Priority Selection */}
               <div className="space-y-3">
                 <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider">Prioritize</label>
                 <div className="relative">
@@ -470,7 +531,7 @@ export default function LaissezFaireApp() {
                     )}
                   </div>
                   <div className="p-4 bg-stone-50 border-t border-stone-200 text-center">
-                    <button onClick={() => window.print()} className="flex items-center justify-center gap-2 w-full py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-100 rounded-lg transition-colors">
+                    <button onClick={printShoppingList} className="flex items-center justify-center gap-2 w-full py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-100 rounded-lg transition-colors">
                         <Printer size={16} /> Print Shopping List
                     </button>
                   </div>
