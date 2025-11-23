@@ -29,8 +29,9 @@ export async function POST(request: Request) {
   Return ONLY the JSON array.`;
 
   const apiKey = process.env.GOOGLE_API_KEY || '';
-  // Fallback to gemini-pro if flash fails, but flash is usually standard now.
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  
+  // UPDATED: Switched to 'gemini-1.5-flash-latest' to fix 404 error
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
   try {
     const response = await fetch(url, {
@@ -44,7 +45,6 @@ export async function POST(request: Request) {
     const data = await response.json();
 
     // --- SAFETY CHECK ---
-    // If Google returns an error, this block logs it and stops the crash.
     if (!data.candidates) {
       console.error("Google API Error Details:", JSON.stringify(data, null, 2));
       return NextResponse.json({ 
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 
     let text = data.candidates[0].content.parts[0].text;
     
-    // Clean up markdown formatting if the AI adds it
+    // Clean up markdown formatting
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     
     const recipes = JSON.parse(text);
