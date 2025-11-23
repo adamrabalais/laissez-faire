@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-// ADDED 'Check' to this list below vvv
-import { ShoppingCart, ChefHat, Check, ArrowRight, Sparkles, Users, ChevronDown, ChevronUp, ExternalLink, Leaf, Printer, Loader2 } from 'lucide-react';
+// ADDED 'Utensils' to imports
+import { ShoppingCart, ChefHat, Check, ArrowRight, Sparkles, Users, ChevronDown, ChevronUp, ExternalLink, Leaf, Printer, Loader2, Utensils } from 'lucide-react';
 
 // --- ALGORITHM Helpers ---
 const generateShoppingList = (plan: any[], peopleCount: number) => {
@@ -286,7 +286,11 @@ export default function LaissezFaireApp() {
                       >
                         -
                       </button>
-                      <span className="text-3xl font-serif font-black text-emerald-700 px-4">{mealCount}</span>
+                      {/* ADDED ICON HERE */}
+                      <div className="flex items-center gap-2 px-2">
+                        <Utensils size={18} className="text-emerald-700/50" />
+                        <span className="text-3xl font-serif font-black text-emerald-700">{mealCount}</span>
+                      </div>
                       <button 
                         onClick={() => setMealCount(Math.min(7, mealCount + 1))}
                         className="w-12 h-12 flex items-center justify-center bg-emerald-700 rounded-lg shadow-sm text-white hover:bg-emerald-800 text-xl font-bold active:scale-95 transition-all"
