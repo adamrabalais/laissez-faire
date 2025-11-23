@@ -1,46 +1,60 @@
 import { NextResponse } from 'next/server';
 
 const SYSTEM_PROMPT = `
-You are a meal planning API. You find REAL, existing recipes.
+You are a meal planning assistant that finds REAL recipes from the web.
+You MUST use the Google Search tool to find actual, existing recipes.
+Do not invent recipes.
 Structure the response as an array of recipe objects.
 Each object must have: 
 - id (number)
-- title (string)
+- title (string: The exact title from the website)
 - description (short string)
 - cuisine (string)
 - kidFriendly (boolean)
-- rating (number, 3.0-5.0)
-- reviewCount (number)
-- imageSearchQuery (string: 2-4 keywords to find a perfect stock photo of this finished dish on Unsplash. e.g. "grilled chicken souvlaki plate")
+- rating (number, extracted from the site if possible, else estimate 4.0-5.0)
+- reviewCount (number, extracted or estimate)
+- imageSearchQuery (string: keywords for a fallback stock photo)
 - ingredients (array of objects: {name, amount (number), unit, category, emoji (string)})
-- instructions (array of strings)
-- servings (number, default 4)
-- sourceUrl (string: A real URL if you are 100% sure it exists, otherwise leave empty string.)
+- instructions (array of strings - summary of the real steps)
+- servings (number, extracted from site)
+- sourceUrl (string: The ACTUAL URL to the recipe found via Google Search.)
 
-Categories must be one of: Produce, Meat, Pantry, Dairy, Bakery, Spices, Refrigerated.
-Minimize food waste by reusing ingredients across recipes where logical.
+Categories: Produce, Meat, Pantry, Dairy, Bakery, Spices, Refrigerated.
 `;
 
-// Helper to scrape the Open Graph image from a URL
+// Helper to scrape the REAL image from the website
 async function fetchOgImage(url: string): Promise<string | null> {
   if (!url || url.includes('google.com')) return null;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000); 
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
     
     const res = await fetch(url, { 
         signal: controller.signal,
-        headers: { 'User-Agent': 'Laissez-faire-Bot/1.0' } 
+        headers: { 
+            'User-Agent': 'Mozilla/5.0 (compatible; LaissezFaireBot/1.0; +http://laissez-faire.app)' 
+        } 
     });
     clearTimeout(timeoutId);
     
     if (!res.ok) return null;
     const html = await res.text();
     
-    const match = html.match(/<meta property="og:image" content="([^"]+)"/i);
-    return match ? match[1] : null;
-  } catch (e) {
+    // Try OG Image first (Standard)
+    let match = html.match(/<meta property="og:image" content="([^"]+)"/i);
+    if (match) return match[1];
+
+    // Try Twitter Image (Common alternative)
+    match = html.match(/<meta name="twitter:image" content="([^"]+)"/i);
+    if (match) return match[1];
+
+    // Try generic image_src (Old school)
+    match = html.match(/<link rel="image_src" href="([^"]+)"/i);
+    if (match) return match[1];
+
     return null;
+  } catch (e) {
+    return null; // Fail silently if site blocks bot
   }
 }
 
@@ -48,32 +62,36 @@ export async function POST(request: Request) {
   const body = await request.json();
   const { count, people, diet, kidFriendly, priority } = body;
 
-  let priorityInstruction = "Balance cost, ease, and flavor."; 
+  let priorityInstruction = "Find highly-rated recipes that balance cost and flavor."; 
   if (priority === 'Cheaper Ingredients') {
-    priorityInstruction = "Prioritize recipes known for being budget-friendly.";
+    priorityInstruction = "Search for budget-friendly recipes.";
   } else if (priority === 'Fewer Ingredients') {
-    priorityInstruction = "Prioritize recipes with short ingredient lists (5-7 items).";
+    priorityInstruction = "Search for 5-ingredient or simple recipes.";
   } else if (priority === 'Fancier Meals') {
-    priorityInstruction = "Prioritize highly-rated gourmet recipes.";
+    priorityInstruction = "Search for gourmet or chef-quality recipes.";
   }
 
-  const userPrompt = `Find ${count} distinct ${diet} dinner recipes for ${people} people. 
-  ${kidFriendly ? "Select recipes that are generally considered kid-friendly." : ""}
+  // Explicitly asking for URLs allows the Search Tool to shine
+  const userPrompt = `Search for and return ${count} distinct ${diet} dinner recipes for ${people} people. 
+  ${kidFriendly ? "Ensure they are kid-friendly." : ""}
   ${priorityInstruction}
+  Include the direct URL (sourceUrl) for each recipe found.
   Return ONLY the JSON array.`;
 
-  const googleApiKey = (process.env.GOOGLE_API_KEY || '').trim();
+  const apiKey = (process.env.GOOGLE_API_KEY || '').trim();
   const unsplashAccessKey = (process.env.UNSPLASH_ACCESS_KEY || '').trim();
 
-  // USE GEMINI 2.5 FLASH
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`;
+  // Using gemini-2.5-flash with Search Tools enabled
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   try {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: SYSTEM_PROMPT + "\n" + userPrompt }] }]
+        contents: [{ parts: [{ text: SYSTEM_PROMPT + "\n" + userPrompt }] }],
+        // THIS ENABLES LIVE GOOGLE SEARCH
+        tools: [{ google_search: {} }] 
       })
     });
 
@@ -81,6 +99,7 @@ export async function POST(request: Request) {
 
     if (!data.candidates) {
       console.error("--- GENERATION FAILED ---");
+      console.error("Error Details:", JSON.stringify(data, null, 2));
       return NextResponse.json({ 
         error: "API Error", 
         details: data.error?.message || "No candidates returned." 
@@ -94,22 +113,28 @@ export async function POST(request: Request) {
     try {
         recipes = JSON.parse(text);
     } catch (parseError) {
-        return NextResponse.json({ error: "AI returned invalid JSON" }, { status: 500 });
+        // Sometimes the model returns text before JSON, try to extract it
+        const jsonMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (jsonMatch) {
+            recipes = JSON.parse(jsonMatch[0]);
+        } else {
+            return NextResponse.json({ error: "AI returned invalid JSON" }, { status: 500 });
+        }
     }
 
-    // POST-PROCESSING
+    // POST-PROCESSING: Scrape Real Images
+    console.log("Scraping real images from sources...");
     const enhancedRecipes = await Promise.all(recipes.map(async (recipe: any) => {
         let imageUrl = null;
 
-        // 1. Try real image from source
+        // 1. Attempt to scrape the REAL image from the source URL
         if (recipe.sourceUrl && recipe.sourceUrl.startsWith('http')) {
             imageUrl = await fetchOgImage(recipe.sourceUrl);
         }
 
-        // 2. Fallback to Unsplash with optimized query
+        // 2. Fallback to Unsplash ONLY if scraping failed
         if (!imageUrl && unsplashAccessKey) {
             try {
-                // Use the specific search query from AI, or title as fallback
                 const query = recipe.imageSearchQuery || recipe.title;
                 const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape&client_id=${unsplashAccessKey}`;
                 const imgRes = await fetch(unsplashUrl);
@@ -126,6 +151,7 @@ export async function POST(request: Request) {
     return NextResponse.json(enhancedRecipes);
     
   } catch (error) {
+    console.error("Server Error:", error);
     return NextResponse.json({ error: "Failed to generate recipes" }, { status: 500 });
   }
 }
