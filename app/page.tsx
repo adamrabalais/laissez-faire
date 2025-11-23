@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ShoppingCart, ChefHat, Check, ArrowRight, Sparkles, Users, ChevronDown, ChevronUp, ExternalLink, Leaf, Printer, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShoppingCart, ChefHat, ArrowRight, Sparkles, Users, ChevronDown, ChevronUp, ExternalLink, Leaf, Printer, Loader2 } from 'lucide-react';
 
 // --- ALGORITHM Helpers ---
-// Added ': any' to tell TypeScript to relax
 const generateShoppingList = (plan: any[], peopleCount: number) => {
   const list: any = {};
   
@@ -43,7 +42,6 @@ const formatAmount = (amount: number) => {
 
 // --- SUBCOMPONENTS ---
 
-// Added type definitions for props
 const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number }) => {
   const [expanded, setExpanded] = useState(false);
   const scaleFactor = peopleCount / (recipe.servings || 4);
@@ -151,10 +149,11 @@ const RecipeCard = ({ recipe, peopleCount }: { recipe: any; peopleCount: number 
 export default function LaissezFaireApp() {
   const [step, setStep] = useState('input'); 
   const [mealCount, setMealCount] = useState(3);
-  const [peopleCount, setPeopleCount] = useState(2);
+  const [peopleCount, setPeopleCount] = useState(1); // Default changed to 1
   const [kidFriendly, setKidFriendly] = useState(false);
-  const [cuisine, setCuisine] = useState('Mediterranean Diet');
+  const [cuisine, setCuisine] = useState('Mediterranean');
   const [isLoading, setIsLoading] = useState(false);
+  const [statusText, setStatusText] = useState('');
   
   const [plan, setPlan] = useState<any[]>([]);
   const [shoppingList, setShoppingList] = useState<any[]>([]);
@@ -162,8 +161,23 @@ export default function LaissezFaireApp() {
   const handlePlan = async () => {
     setIsLoading(true);
     
+    // Status Message Cycler
+    const messages = [
+        "Consulting Chef...", 
+        "Checking the pantry...", 
+        "Optimizing for leftovers...", 
+        "Writing recipes...", 
+        "Finalizing shopping list..."
+    ];
+    let msgIndex = 0;
+    setStatusText(messages[0]);
+    
+    const intervalId = setInterval(() => {
+        msgIndex = (msgIndex + 1) % messages.length;
+        setStatusText(messages[msgIndex]);
+    }, 2000);
+
     try {
-      // THE MAGIC: Call the Brain
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -187,7 +201,9 @@ export default function LaissezFaireApp() {
     } catch (e) {
       console.error("Failed to generate", e);
     } finally {
+      clearInterval(intervalId);
       setIsLoading(false);
+      setStatusText('');
     }
   };
 
@@ -224,7 +240,7 @@ export default function LaissezFaireApp() {
           <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-10 space-y-2">
               <h1 className="text-4xl font-serif font-bold text-stone-800">What's the plan, Skylar?</h1>
-              <p className="text-lg text-stone-500">I'll figure out the food. You just tell me how much.</p>
+              <p className="text-lg text-stone-500">I'll figure out the food. You just eat it.</p>
             </div>
 
             <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-stone-200 border border-stone-100 p-8 space-y-8">
@@ -238,11 +254,20 @@ export default function LaissezFaireApp() {
                     onChange={(e) => setCuisine(e.target.value)}
                     className="w-full p-3 pl-4 pr-10 text-lg bg-stone-50 border-2 border-stone-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-stone-700 font-medium appearance-none cursor-pointer hover:border-emerald-300"
                   >
-                    <option>Mediterranean Diet</option>
-                    <option>Keto</option>
-                    <option>Paleo</option>
-                    <option>Vegetarian</option>
-                    <option>Classic American</option>
+                    <option value="Mediterranean">Mediterranean Diet</option>
+                    <option value="Italian">Italian</option>
+                    <option value="Mexican">Mexican</option>
+                    <option value="Asian Stir-Fry">Asian Stir-Fry</option>
+                    <option value="Classic American">Classic American</option>
+                    <option value="Cajun / Creole">Cajun / Creole</option>
+                    <option value="Thai">Thai</option>
+                    <option value="Indian">Indian</option>
+                    <option value="Greek">Greek</option>
+                    <option value="Japanese">Japanese</option>
+                    <option value="French">French</option>
+                    <option value="Vegetarian">Vegetarian</option>
+                    <option value="Keto">Keto Friendly</option>
+                    <option value="Paleo">Paleo</option>
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" size={20} />
                 </div>
@@ -313,23 +338,32 @@ export default function LaissezFaireApp() {
               </div>
 
               {/* Action Button */}
-              <button 
-                onClick={handlePlan}
-                disabled={isLoading}
-                className="w-full py-4 bg-stone-900 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:translate-y-0"
-              >
-                {isLoading ? (
-                   <>
-                    <Loader2 className="animate-spin" size={20} />
-                    Consulting Chef...
-                   </>
-                ) : (
-                   <>
-                    <ChefHat size={20} />
-                    Generate Plan
-                   </>
-                )}
-              </button>
+              <div className="space-y-3">
+                <button 
+                    onClick={handlePlan}
+                    disabled={isLoading}
+                    className="w-full py-4 bg-stone-900 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:translate-y-0"
+                >
+                    {isLoading ? (
+                    <>
+                        <Loader2 className="animate-spin" size={20} />
+                        Generating...
+                    </>
+                    ) : (
+                    <>
+                        <ChefHat size={20} />
+                        Generate Plan
+                    </>
+                    )}
+                </button>
+                
+                {/* Status Line */}
+                <div className="h-6 text-center">
+                    {isLoading && (
+                        <p className="text-xs font-medium text-emerald-600 animate-pulse">{statusText}</p>
+                    )}
+                </div>
+              </div>
 
             </div>
           </div>
@@ -340,7 +374,7 @@ export default function LaissezFaireApp() {
             <div className="flex items-center justify-between">
                <div>
                   <h2 className="text-2xl font-serif font-bold text-stone-900">Your Menu</h2>
-                  <p className="text-stone-500">Calculated for <strong className="text-stone-900">{peopleCount} people</strong>.</p>
+                  <p className="text-stone-500">Calculated for <strong className="text-stone-900">{peopleCount} person{peopleCount > 1 ? 's' : ''}</strong>.</p>
                </div>
                <div className="text-right hidden sm:block">
                   <div className="text-3xl font-black text-emerald-700">{plan.length}</div>
@@ -372,7 +406,7 @@ export default function LaissezFaireApp() {
 
                 <div className="bg-white rounded-2xl shadow-lg border border-stone-200 overflow-hidden sticky top-24">
                   <div className="p-4 bg-stone-50 border-b border-stone-200">
-                    <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Amounts for {peopleCount} People</p>
+                    <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Amounts for {peopleCount} Person{peopleCount > 1 ? 's' : ''}</p>
                   </div>
                   <div className="divide-y divide-stone-100 max-h-[calc(100vh-250px)] overflow-y-auto">
                     {shoppingList.length === 0 ? (
