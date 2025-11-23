@@ -13,7 +13,6 @@ Each object must have:
 - kidFriendly (boolean)
 - rating (number, between 3.0 and 5.0)
 - reviewCount (number)
-- imagePrompt (string: a short, vivid visual description of the dish for an AI image generator, e.g. "A plate of grilled chicken souvlaki with lemon and herbs, photorealistic, 4k")
 - ingredients (array of objects: {name, amount (number), unit, category, emoji (string)})
 - instructions (array of strings)
 - servings (number, default 4)
@@ -28,7 +27,7 @@ export async function POST(request: Request) {
   const { count, people, diet, kidFriendly, priority } = body;
 
   // Logic to nudge the AI based on priority
-  let priorityInstruction = "Balance cost, ease, and flavor."; // Default
+  let priorityInstruction = "Balance cost, ease, and flavor."; 
   if (priority === 'Cheaper Ingredients') {
     priorityInstruction = "Strictly prioritize budget-friendly ingredients (beans, rice, seasonal veggies, cheaper cuts of meat). Avoid expensive specialty items.";
   } else if (priority === 'Fewer Ingredients') {
@@ -42,12 +41,11 @@ export async function POST(request: Request) {
   ${priorityInstruction}
   Return ONLY the JSON array.`;
 
-  // 1. SANITIZE THE KEY
-  const rawKey = process.env.GOOGLE_API_KEY || '';
-  const apiKey = rawKey.trim(); 
+  const googleApiKey = (process.env.GOOGLE_API_KEY || '').trim();
+  const unsplashAccessKey = (process.env.UNSPLASH_ACCESS_KEY || '').trim();
 
-  // 2. USE THE AVAILABLE MODEL (Gemini 2.5 Flash)
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  // 1. USE GEMINI 2.5 FLASH
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`;
 
   try {
     const response = await fetch(url, {
@@ -60,26 +58,49 @@ export async function POST(request: Request) {
 
     const data = await response.json();
 
-    // --- DIAGNOSTIC BLOCK ---
     if (!data.candidates) {
       console.error("--- GENERATION FAILED ---");
       console.error("Error Details:", JSON.stringify(data, null, 2));
-      
       return NextResponse.json({ 
         error: "API Error", 
-        details: data.error?.message || "No candidates returned. Check Vercel logs." 
+        details: data.error?.message || "No candidates returned." 
       }, { status: 500 });
     }
 
     let text = data.candidates[0].content.parts[0].text;
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     
-    let recipes;
+    let recipes = [];
     try {
         recipes = JSON.parse(text);
     } catch (parseError) {
         console.error("JSON Parse Error:", text);
         return NextResponse.json({ error: "AI returned invalid JSON" }, { status: 500 });
+    }
+
+    // 2. FETCH IMAGES FROM UNSPLASH (Parallel)
+    if (unsplashAccessKey) {
+      console.log("Fetching images from Unsplash...");
+      const imagePromises = recipes.map(async (recipe: any) => {
+        try {
+          const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(recipe.title)}&per_page=1&orientation=landscape&client_id=${unsplashAccessKey}`;
+          const imgRes = await fetch(unsplashUrl);
+          const imgData = await imgRes.json();
+          
+          // Attach real image URL if found, otherwise null
+          return { 
+            ...recipe, 
+            imageUrl: imgData.results?.[0]?.urls?.regular || null 
+          };
+        } catch (e) {
+          console.error(`Failed to fetch image for ${recipe.title}`, e);
+          return recipe; // Return recipe without image on failure
+        }
+      });
+
+      recipes = await Promise.all(imagePromises);
+    } else {
+      console.log("Skipping images: No UNSPLASH_ACCESS_KEY found.");
     }
 
     return NextResponse.json(recipes);
