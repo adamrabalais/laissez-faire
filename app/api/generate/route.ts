@@ -21,18 +21,15 @@ Minimize food waste by reusing ingredients across recipes where logical.
 `;
 
 export async function POST(request: Request) {
-  // 1. Get the user's request
   const body = await request.json();
   const { count, people, diet, kidFriendly } = body;
 
-  // 2. Construct the specific prompt for this user
   const userPrompt = `Generate ${count} distinct ${diet} dinner recipes for ${people} people. 
   ${kidFriendly ? "Make them kid-friendly (simple flavors, no heavy spice)." : ""}
   Return ONLY the JSON array.`;
 
-  // 3. Call Google Gemini API (using raw fetch to keep it simple)
-  // Fix: Default to empty string if undefined to satisfy TS strict checks
   const apiKey = process.env.GOOGLE_API_KEY || '';
+  // Fallback to gemini-pro if flash fails, but flash is usually standard now.
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
   try {
@@ -45,17 +42,27 @@ export async function POST(request: Request) {
     });
 
     const data = await response.json();
-    
-    // 4. Clean up the response text to ensure it is valid JSON
+
+    // --- SAFETY CHECK ---
+    // If Google returns an error, this block logs it and stops the crash.
+    if (!data.candidates) {
+      console.error("Google API Error Details:", JSON.stringify(data, null, 2));
+      return NextResponse.json({ 
+        error: "API Error", 
+        details: data.error?.message || "No candidates returned" 
+      }, { status: 500 });
+    }
+
     let text = data.candidates[0].content.parts[0].text;
+    
+    // Clean up markdown formatting if the AI adds it
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     
     const recipes = JSON.parse(text);
-
     return NextResponse.json(recipes);
     
   } catch (error) {
-    console.error("AI Error:", error);
+    console.error("Server Error:", error);
     return NextResponse.json({ error: "Failed to generate recipes" }, { status: 500 });
   }
 }
