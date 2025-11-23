@@ -30,8 +30,9 @@ export async function POST(request: Request) {
 
   const apiKey = process.env.GOOGLE_API_KEY || '';
   
-  // UPDATED: Changed 'v1beta' to 'v1' because gemini-pro lives in v1.
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
+  // UPDATED: Using the specific pinned version 'gemini-1.5-flash-001' on 'v1beta'.
+  // This is the most stable address for the new fast model.
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent?key=${apiKey}`;
 
   try {
     const response = await fetch(url, {
