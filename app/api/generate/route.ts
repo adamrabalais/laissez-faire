@@ -1,20 +1,21 @@
 import { NextResponse } from 'next/server';
 
 const SYSTEM_PROMPT = `
-You are a meal planning API. You do not invent recipes. You find REAL, existing recipes from reputable websites (like AllRecipes, FoodNetwork, SeriousEats, BonAppetit, NYT Cooking, etc).
+You are a meal planning API. You find REAL, existing recipes.
 Structure the response as an array of recipe objects.
 Each object must have: 
 - id (number)
-- title (string: The exact title from the website)
+- title (string)
 - description (short string)
 - cuisine (string)
 - kidFriendly (boolean)
-- rating (number, between 3.0 and 5.0)
+- rating (number, 3.0-5.0)
 - reviewCount (number)
+- imageSearchQuery (string: 2-4 keywords to find a perfect stock photo of this finished dish on Unsplash. e.g. "grilled chicken souvlaki plate")
 - ingredients (array of objects: {name, amount (number), unit, category, emoji (string)})
-- instructions (array of strings - summary of steps)
+- instructions (array of strings)
 - servings (number, default 4)
-- sourceUrl (string: The ACTUAL URL to the specific recipe on the web. Do NOT use a search query URL.)
+- sourceUrl (string: A real URL if you are 100% sure it exists, otherwise leave empty string.)
 
 Categories must be one of: Produce, Meat, Pantry, Dairy, Bakery, Spices, Refrigerated.
 Minimize food waste by reusing ingredients across recipes where logical.
@@ -25,7 +26,7 @@ async function fetchOgImage(url: string): Promise<string | null> {
   if (!url || url.includes('google.com')) return null;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 3000); 
     
     const res = await fetch(url, { 
         signal: controller.signal,
@@ -36,11 +37,10 @@ async function fetchOgImage(url: string): Promise<string | null> {
     if (!res.ok) return null;
     const html = await res.text();
     
-    // Simple regex to find <meta property="og:image" content="...">
     const match = html.match(/<meta property="og:image" content="([^"]+)"/i);
     return match ? match[1] : null;
   } catch (e) {
-    return null; // Fail silently
+    return null;
   }
 }
 
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
   const userPrompt = `Find ${count} distinct ${diet} dinner recipes for ${people} people. 
   ${kidFriendly ? "Select recipes that are generally considered kid-friendly." : ""}
   ${priorityInstruction}
-  Return ONLY the JSON array. Ensure 'sourceUrl' is a real, valid link.`;
+  Return ONLY the JSON array.`;
 
   const googleApiKey = (process.env.GOOGLE_API_KEY || '').trim();
   const unsplashAccessKey = (process.env.UNSPLASH_ACCESS_KEY || '').trim();
@@ -81,7 +81,6 @@ export async function POST(request: Request) {
 
     if (!data.candidates) {
       console.error("--- GENERATION FAILED ---");
-      console.error("Error Details:", JSON.stringify(data, null, 2));
       return NextResponse.json({ 
         error: "API Error", 
         details: data.error?.message || "No candidates returned." 
@@ -95,24 +94,24 @@ export async function POST(request: Request) {
     try {
         recipes = JSON.parse(text);
     } catch (parseError) {
-        console.error("JSON Parse Error:", text);
         return NextResponse.json({ error: "AI returned invalid JSON" }, { status: 500 });
     }
 
-    // POST-PROCESSING: Fetch Real Images (with Unsplash Fallback)
-    console.log("Fetching images...");
+    // POST-PROCESSING
     const enhancedRecipes = await Promise.all(recipes.map(async (recipe: any) => {
         let imageUrl = null;
 
-        // 1. Try to scrape the REAL image from the source URL
-        if (recipe.sourceUrl) {
+        // 1. Try real image from source
+        if (recipe.sourceUrl && recipe.sourceUrl.startsWith('http')) {
             imageUrl = await fetchOgImage(recipe.sourceUrl);
         }
 
-        // 2. If scrape failed, fallback to Unsplash
+        // 2. Fallback to Unsplash with optimized query
         if (!imageUrl && unsplashAccessKey) {
             try {
-                const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(recipe.title)}&per_page=1&orientation=landscape&client_id=${unsplashAccessKey}`;
+                // Use the specific search query from AI, or title as fallback
+                const query = recipe.imageSearchQuery || recipe.title;
+                const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape&client_id=${unsplashAccessKey}`;
                 const imgRes = await fetch(unsplashUrl);
                 const imgData = await imgRes.json();
                 imageUrl = imgData.results?.[0]?.urls?.regular || null;
@@ -127,7 +126,6 @@ export async function POST(request: Request) {
     return NextResponse.json(enhancedRecipes);
     
   } catch (error) {
-    console.error("Server Error:", error);
     return NextResponse.json({ error: "Failed to generate recipes" }, { status: 500 });
   }
 }
