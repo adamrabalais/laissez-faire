@@ -22,7 +22,8 @@ Minimize food waste by reusing ingredients across recipes where logical.
 
 export async function POST(request: Request) {
   // 1. Get the user's request
-  const { count, people, diet, kidFriendly } = await request.json();
+  const body = await request.json();
+  const { count, people, diet, kidFriendly } = body;
 
   // 2. Construct the specific prompt for this user
   const userPrompt = `Generate ${count} distinct ${diet} dinner recipes for ${people} people. 
@@ -30,7 +31,8 @@ export async function POST(request: Request) {
   Return ONLY the JSON array.`;
 
   // 3. Call Google Gemini API (using raw fetch to keep it simple)
-  const apiKey = process.env.GOOGLE_API_KEY;
+  // Fix: Default to empty string if undefined to satisfy TS strict checks
+  const apiKey = process.env.GOOGLE_API_KEY || '';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
   try {
