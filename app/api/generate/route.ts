@@ -30,8 +30,8 @@ export async function POST(request: Request) {
 
   const apiKey = process.env.GOOGLE_API_KEY || '';
   
-  // UPDATED: Switched to 'gemini-pro' (The most stable/standard model)
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+  // UPDATED: Changed 'v1beta' to 'v1' because gemini-pro lives in v1.
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
 
   try {
     const response = await fetch(url, {
